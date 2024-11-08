@@ -1,0 +1,10 @@
+prefix=/home/ishan/Projects/npkg-C/Source/inih-r58/..
+includedir=${prefix}/include
+libdir=${prefix}/lib/x86_64-linux-gnu
+
+Name: INIReader
+Description: simple .INI file parser for C++
+Version: 58
+Requires.private: inih
+Libs: -L${libdir} -lINIReader
+Cflags: -I${includedir}

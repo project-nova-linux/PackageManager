@@ -9,6 +9,8 @@ InstallDIR = Config.ResolveConfig("Global", "InstallDIR")
 PackagesDIR = Config.ResolveConfig("Global", "PackagesDIR")
 CacheDIR = Config.ResolveConfig("Global", "CacheDIR")
 
+DownloadPath = CacheDIR
+
 if not os.path.exists(InstallDIR):
         os.mkdir(InstallDIR)
 
@@ -24,6 +26,30 @@ def QuikResolve(Arg):
     print(f"Resolved package(s) in {ResolvedTime} seconds")
     InstallPackages(Arg)
 
+def DownloadPackage(URL, Path):
+  import requests
+  from tqdm import tqdm
+  Response = requests.get(URL, stream=True)
+  Response.raise_for_status()
+  TotalSize = int(Response.headers.get('content-length', 0)) or 25000000
+  try:
+    with open(Path, 'wb') as PackagedFile, tqdm(
+      total=TotalSize, unit='B', unit_scale=True, desc=os.path.basename(Path)
+      ) as ProgressBar:
+      for chunk in Response.iter_content(chunk_size=32768):
+        PackagedFile.write(chunk)
+        ProgressBar.update(len(chunk))
+
+  except requests.exceptions.Connection Error:
+    print(f"Error: unable to reach repo {Repo}")
+    exit(1)
+  except requests.exceptions.Timeout:
+    print("Error: request timed out for repo {Repo}")
+    exit(1)
+  except requests.exceptions.RequestException as Error:
+    print(f"Error: {Error}")
+    exit(1)
+
 def GetPackage(Package, Repo):
     if not Repo.startswith(('http://', 'https://')):
         Repo = 'http://' + Repo
@@ -31,29 +57,11 @@ def GetPackage(Package, Repo):
         print(f"Info: using already cached package for {Package}")
         return
     else:
-        try:
-            from tqdm import tqdm
-            PackageURL = Repo + f'/{Package}.npe'
-            import requests
-            Response = requests.get(PackageURL, stream=True)
-            Response.raise_for_status()
-            TotalSize = int(Response.headers.get('content-length', 0)) or 25000000
-            with open(os.path.join(CacheDIR, Package + '.npe'), 'wb') as PackagedFile, tqdm(
-                total=TotalSize, unit='B', unit_scale=True, desc=Package
-            ) as ProgressBar:
-                for chunk in Response.iter_content(chunk_size=32768):
-                    PackagedFile.write(chunk)
-                    ProgressBar.update(len(chunk))
-
-        except requests.exceptions.ConnectionError:
-            print(f"Error: unable to reach repo {Repo}")
-            exit(1)
-        except requests.exceptions.Timeout:
-            print("Error: request timed out for repo {Repo}")
-            exit(1)
-        except requests.exceptions.RequestException as Error:
-            print(f"Error: {Error}")
-            exit(1)
+      PackageURL = Repo + f'/{Package}.npe'
+      SignatureURL = Repo + f'/{Package}.sig'
+      DownloadPackage(SignatureURL, f'{DownloadPath}/{Package}.sig')
+      DownloadPackage(PackageURL, f'{DownloadPath}/{Package}.npe')
+            
 
 def InstallPackage(Package):
     try:
@@ -71,7 +79,6 @@ def InstallPackage(Package):
 def InstallPackages(Packages):
     for Package in Packages:
         GetPackage(Package, Repo)
-    for Package in Packages:
         InstallPackage(Package)
 
 def ProgressBar(itr, tot, length=50):

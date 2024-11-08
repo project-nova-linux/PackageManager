@@ -1,0 +1,9 @@
+prefix=/home/ishan/Projects/npkg-C/Source/inih-r58/..
+includedir=${prefix}/include
+libdir=${prefix}/lib/x86_64-linux-gnu
+
+Name: inih
+Description: simple .INI file parser
+Version: 58
+Libs: -L${libdir} -linih
+Cflags: -I${includedir}
